@@ -3,6 +3,11 @@ Django==2.2.16
 django-filter==2.4.0
 djangorestframework==3.12.4
 djangorestframework-simplejwt==4.8.0
+drf-base64
+drf-extra-fields
+drf-writable-nested
+
+
 # gunicorn==20.0.4
 # psycopg2-binary==2.8.6
 # PyJWT==2.1.0

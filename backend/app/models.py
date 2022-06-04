@@ -1,9 +1,9 @@
-from django.contrib.auth.models import User, AbstractUser
+from django.contrib.auth.models import AbstractUser
 from django.db import models
 from datetime import date
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-
+from django.utils.translation import gettext_lazy as _
 
 # class UserRole(models.Model):
 #     USER = 'user'
@@ -16,7 +16,11 @@ from django.db import models
 #     ]
 
 
-# class User(AbstractUser):
+class User(AbstractUser):
+    email = models.EmailField(unique=True)
+
+
+
 
 #     # bio = models.TextField(
 #     #     max_length=500,
@@ -38,8 +42,7 @@ from django.db import models
 #         return self.role == UserRole.ADMIN
 
 
-#     class Meta:
-#         ordering = ('username',)
+
 
 
 class Tag(models.Model):
@@ -63,13 +66,22 @@ class Tag(models.Model):
 
 
 class Ingredient(models.Model):
-    name = models.CharField(
-        max_length=200,
-        unique=True
+    name = models.CharField(max_length=200)
+    measurement_unit = models.CharField(max_length=200)
+
+    class Meta:
+        ordering = ('id',)
+        verbose_name = 'Ингридиент'
+        verbose_name_plural = 'Ингридиенты'
+
+
+class IngredientForRecipe(models.Model):
+    ingredient = models.ForeignKey(
+        Ingredient,
+        on_delete=models.CASCADE
     )
-    measurement_unit = models.CharField(
-        max_length=200,
-        unique=True
+    amount = models.IntegerField(
+        MinValueValidator(0),
     )
 
     class Meta:
@@ -87,7 +99,8 @@ class Recipe(models.Model):
         verbose_name='Автор рецепта',
         help_text='Автор рецепта'
     )
-    ingredients = models.ManyToManyField(Ingredient, through='IngredientForRecipe') # не все так просто
+    ingredients = models.ManyToManyField(IngredientForRecipe)  # не все так просто
+
     is_favorited = models.ManyToManyField(
         User,
         related_name='is_favoriteds'
@@ -96,10 +109,12 @@ class Recipe(models.Model):
         User,
         related_name='is_in_shopping_carts'
         )
-    name = models.CharField(
+
+    name = models.TextField(
         max_length=200,
     )
-    # image = models.TextField()
+    image = models.ImageField()
+
     text = models.TextField()
     cooking_time = models.IntegerField(MinValueValidator(0))
     created = models.DateTimeField(auto_now_add=True)
@@ -116,7 +131,7 @@ class Recipe(models.Model):
         verbose_name_plural = 'Рецепты'
 
 
-class Follow(models.Model):
+class Subscription(models.Model):
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -131,20 +146,3 @@ class Follow(models.Model):
     )
 
 
-class IngredientForRecipe(models.Model):
-    ingredient = models.ForeignKey(
-        Ingredient,
-        on_delete=models.CASCADE
-    )
-    recipe = models.ForeignKey(
-        Recipe,
-        on_delete=models.CASCADE
-    )
-    amount = models.IntegerField(
-        MinValueValidator(0),
-    )
-
-    class Meta:
-        ordering = ('id',)
-        verbose_name = 'Ингридиент'
-        verbose_name_plural = 'Ингридиенты'

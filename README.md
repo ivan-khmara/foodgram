@@ -6,6 +6,8 @@
  GET  http://localhost/api/users/{id}/         Профиль пользователя
  GET  http://localhost/api/users/me/           Текущий пользователь
  GET  http://localhost/api/users/set_password/ Изменение пароля
+ 
+ 
  POST http://localhost/api/auth/token/login/   Получить токен авторизации
  POST http://localhost/api/auth/token/logout/  Удаление токена                                      
 ```
