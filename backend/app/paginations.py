@@ -1,7 +1,7 @@
 from rest_framework.pagination import PageNumberPagination
 
 
-class ReviewsSetPagination(PageNumberPagination):
+class RecipePagination(PageNumberPagination):
     page_size = 5
 
 

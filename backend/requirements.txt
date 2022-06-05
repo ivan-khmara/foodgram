@@ -1,4 +1,3 @@
-# asgiref==3.2.10
 Django==2.2.16
 django-filter==2.4.0
 djangorestframework==3.12.4
@@ -6,16 +5,17 @@ djangorestframework-simplejwt==4.8.0
 drf-base64
 drf-extra-fields
 drf-writable-nested
+gunicorn==20.0.4
+djoser==2.1.0
+drf-yasg
+Pillow
+python-dotenv
+psycopg2-binary==2.8.6
 
-
-# gunicorn==20.0.4
-# psycopg2-binary==2.8.6
+# asgiref==3.2.10
 # PyJWT==2.1.0
 # pytz==2020.1
 # sqlparse==0.3.1
-# python-dotenv
-# djoser==2.1.0
-# psycopg2-binary==2.8.6
 # pytest==6.2.4
 # pytest-pythonpath==0.7.3
 # pytest-django==4.4.0

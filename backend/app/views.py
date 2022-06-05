@@ -15,7 +15,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User, Tag, Ingredient, Recipe, Subscription, IngredientForRecipe
 
-from .paginations import CommentsSetPagination, ReviewsSetPagination
+from .paginations import RecipePagination
 from .permissions import (AdminModeratorAuthorOrReadOnly, IsAdminOnly,
                           IsAdminOrReadOnly)
 from .serializers import (UserSerializer, TagSerializer, IngredientSerializer, RecipeSerializer,
@@ -63,7 +63,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     DEL     /recipes/{id}/  - Удаление рецепта
     """
     queryset = Recipe.objects.all()
-
+    pagination_class = RecipePagination
 
 
     def get_serializer_class(self):

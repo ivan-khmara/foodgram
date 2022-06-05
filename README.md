@@ -52,4 +52,17 @@
  POST       http://localhost/api/users/{id}/subscribe/           Подписаться на пользователя                Доступно только авторизованным пользователям
  DEL        http://localhost/api/users/{id}/subscribe/           Отписаться от пользователя                 Доступно только авторизованным пользователям
 ```
+```
+docker build -t ikhmara/backend .  
+docker run --name web -it -p 8000:8000 ikhmara/backend
 
+
+CMD python3 manage.py migrate
+CMD python3 manage.py collectstatic --no-input
+
+
+docker-compose exec web python3 manage.py migrate
+docker-compose exec web python manage.py createsuperuser
+docker-compose exec web python3 manage.py collectstatic --no-input
+
+```
