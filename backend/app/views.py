@@ -5,17 +5,15 @@ from django.db.models import Avg
 from django.forms import model_to_dict
 from django.shortcuts import get_object_or_404
 import json
-from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import (filters, mixins, permissions, status,
                             viewsets)
 from rest_framework.decorators import action
-from rest_framework.pagination import PageNumberPagination
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User, Tag, Ingredient, Recipe, Subscription, IngredientForRecipe
 
-from .paginations import RecipePagination
 from .permissions import (AdminModeratorAuthorOrReadOnly, IsAdminOnly,
                           IsAdminOrReadOnly)
 from .serializers import (UserSerializer, TagSerializer, IngredientSerializer, RecipeSerializer,
@@ -28,12 +26,14 @@ from .serializers import (UserSerializer, TagSerializer, IngredientSerializer, R
                           )
 from drf_yasg.utils import swagger_serializer_method, swagger_auto_schema
 
+from django_filters.rest_framework import DjangoFilterBackend
 
 # from .filters import TitleFilter
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
+    pagination_class = LimitOffsetPagination
 
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
@@ -43,7 +43,7 @@ class TagViewSet(viewsets.ReadOnlyModelViewSet):
     """
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
-
+    pagination_class = None
 
 class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     """
@@ -52,6 +52,10 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     """
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
+    pagination_class = None
+
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name']
 
 
 class RecipeViewSet(viewsets.ModelViewSet):
@@ -63,8 +67,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
     DEL     /recipes/{id}/  - Удаление рецепта
     """
     queryset = Recipe.objects.all()
-    pagination_class = RecipePagination
-
+    pagination_class = LimitOffsetPagination
+    filter_backends = [DjangoFilterBackend, ]
+    filterset_fields = ['is_favorited', 'is_in_shopping_cart', 'author__id', 'tags__slug',]
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -98,6 +103,7 @@ class SubscribetViewSet(mixins.CreateModelMixin,
     """
     serializer_class = SubscribetSerializer
     queryset = Subscription.objects.all()
+    pagination_class = None
 
     @action(methods=['delete'], detail=False)
     def delete(self, request, *args, **kwargs):
@@ -133,6 +139,7 @@ class SubscriptionsViewSet(mixins.ListModelMixin,
     GET   /users/subscriptions/ - Мои подписки
     """
     serializer_class = UserSerializer
+    pagination_class = LimitOffsetPagination
 
     def get_queryset(self):
         user = self.request.user
@@ -149,6 +156,7 @@ class ShoppingCartViewSet(mixins.CreateModelMixin,
     """
     serializer_class = ShoppingCartSerializer
     queryset = Recipe.objects.all()
+    pagination_class = None
 
     @action(methods=['delete'], detail=False)
     def delete(self, request, *args, **kwargs):
@@ -179,6 +187,7 @@ class FavoriteViewSet(mixins.CreateModelMixin,
 
     serializer_class = FavoriteSerializer
     queryset = Recipe.objects.all()
+    pagination_class = None
 
     @action(methods=['delete'], detail=False)
     def delete(self, request, *args, **kwargs):

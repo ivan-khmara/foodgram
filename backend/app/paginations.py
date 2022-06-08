@@ -1,9 +1,2 @@
-from rest_framework.pagination import PageNumberPagination
+from rest_framework.pagination import PageNumberPagination, LimitOffsetPagination
 
-
-class RecipePagination(PageNumberPagination):
-    page_size = 5
-
-
-class CommentsSetPagination(PageNumberPagination):
-    page_size = 5
