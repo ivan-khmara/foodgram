@@ -133,4 +133,5 @@ dmypy.json
 
 
 temp/
+backend/media/
 
