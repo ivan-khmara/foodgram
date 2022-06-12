@@ -1,48 +1,11 @@
 from django.contrib.auth.models import AbstractUser
-from django.db import models
 from datetime import date
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.utils.translation import gettext_lazy as _
-
-# class UserRole(models.Model):
-#     USER = 'user'
-#     ADMIN = 'admin'
-#     ANON = 'anonymous'
-#     CHOICES = [
-#         (USER, 'Пользователь'),
-#         (ADMIN, 'Администратор'),
-#         (ANON, 'Аноним'),
-#     ]
 
 
 class User(AbstractUser):
     email = models.EmailField(unique=True)
-
-
-
-
-#     # bio = models.TextField(
-#     #     max_length=500,
-#     #     blank=True
-#     # )
-#     role = models.CharField(
-#         max_length=9,
-#         choices=UserRole.CHOICES,
-#         default=UserRole.USER,
-#         verbose_name='Уровень доступа'
-#     )
-
-#     # @property
-#     # def allowed_role(self):
-#     #     return self.role == UserRole.ADMIN
-
-#     @property
-#     def is_admin(self):
-#         return self.role == UserRole.ADMIN
-
-
-
 
 
 class Tag(models.Model):
@@ -144,5 +107,3 @@ class Subscription(models.Model):
         related_name='following',
         verbose_name='Автор'
     )
-
-

@@ -1,39 +1,34 @@
-# from api_yamdb.settings import EMAIL_ADRESS
-from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import send_mail
-from django.db.models import Avg
-from django.forms import model_to_dict
+import io
+
+from django.db.models import Sum
+from django.http import FileResponse
 from django.shortcuts import get_object_or_404
-import json
-from rest_framework import (filters, mixins, permissions, status,
+from django_filters.rest_framework import DjangoFilterBackend
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfgen import canvas
+from rest_framework import (filters, mixins, status,
                             viewsets)
 from rest_framework.decorators import action
-from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.tokens import RefreshToken
-from .models import User, Tag, Ingredient, Recipe, Subscription, IngredientForRecipe
 
-from .permissions import (AdminModeratorAuthorOrReadOnly, IsAdminOnly,
-                          IsAdminOrReadOnly)
-from .serializers import (UserSerializer, TagSerializer, IngredientSerializer, RecipeSerializer,
-                          RecipeSerializerPost,
-#                         DownloadShoppingSerializer,
-                          ShoppingCartSerializer,
-                          FavoriteSerializer,
+from .filters import RecipeFilter
+from .models import User, Tag, Ingredient, Recipe, Subscription, IngredientForRecipe
+from .paginations import CustomPagination
+from .serializers import (TagSerializer, IngredientSerializer, RecipeGetSerializer,
+                          RecipePostSerializer,
+                          RecipeMiniSerializer,
                           SubscriptionsSerializer,
                           SubscribetSerializer
                           )
-from drf_yasg.utils import swagger_serializer_method, swagger_auto_schema
 
-from django_filters.rest_framework import DjangoFilterBackend
 
-# from .filters import TitleFilter
-
-class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-    pagination_class = LimitOffsetPagination
+# class UserViewSet(viewsets.ModelViewSet):
+#     queryset = User.objects.all()
+#     serializer_class = UserSerializer
+#     pagination_class = CustomPagination
 
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
@@ -44,6 +39,7 @@ class TagViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
     pagination_class = None
+
 
 class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     """
@@ -66,32 +62,74 @@ class RecipeViewSet(viewsets.ModelViewSet):
     PATCH   /recipes/{id}/  - Обновление рецепта
     DEL     /recipes/{id}/  - Удаление рецепта
     """
-    queryset = Recipe.objects.all()
-    pagination_class = LimitOffsetPagination
-    filter_backends = [DjangoFilterBackend, ]
-    filterset_fields = ['is_favorited', 'is_in_shopping_cart', 'author__id', 'tags__slug',]
+    pagination_class = CustomPagination
+    filter_backends = (DjangoFilterBackend,)
+    filterset_class = RecipeFilter
+
+    def get_queryset(self):
+
+        queryset = Recipe.objects.all()
+        user = self.request.user
+
+        is_favorited = self.request.query_params.get('is_favorited')
+        if is_favorited == '1':
+            queryset = queryset.filter(is_favorited=user)
+
+        is_in_shopping_cart = self.request.query_params.get('is_in_shopping_cart')
+        if is_in_shopping_cart == '1':
+            queryset = queryset.filter(is_in_shopping_cart=user)
+
+        return queryset
 
     def get_serializer_class(self):
-        if self.request.method == 'POST':
-            return RecipeSerializerPost
-        return RecipeSerializer
+        if self.request.method == 'POST' or self.request.method == 'PATCH':
+            return RecipePostSerializer
+        return RecipeGetSerializer
 
 
-# class DownloadShoppingCartViewSet():
-#     #  GET    /recipes/download_shopping_cart/  Список покупок
-#
-# class ShoppingCartViewSet():
-#     CreateAPIView
-#     DestroyAPIView
-#     #  POST   /recipes/{id}/shopping_cart/      Добавить рецепт в список покупок
-#     #  DEL    /recipes/{id}/shopping_cart/      Удалить рецепт из списка покупок
-#
-# class FavoriteViewSet():
-#     CreateAPIView
-#     DestroyAPIView
-#     #  POST   /recipes/{id}/favorite/          Добавить рецепт в избранное
-#     #  DEL    /recipes/{id}/favorite/          Удалить рецепт из избранного
-#
+class DownloadShoppingCart(APIView):
+    """
+    GET    /recipes/download_shopping_cart/ - Список покупок в PDF
+    """
+
+    def get(self, request):
+        user = self.request.user
+        recipe_is_in_shopping_cart = Recipe.objects.filter(is_favorited=user)
+        shopping_cart = (IngredientForRecipe.objects
+                         .filter(recipe__in=recipe_is_in_shopping_cart)
+                         .values('ingredient__id')
+                         .annotate(total=Sum('amount'))
+                         .values('ingredient__name', 'total', 'ingredient__measurement_unit', )
+                         .order_by('-total')
+                         )
+
+        buf = io.BytesIO()
+        canv = canvas.Canvas(buf, pagesize=A4, bottomup=0)
+        pdfmetrics.registerFont(TTFont('Times', 'Times.ttf', 'UTF-8'))
+
+        canv.setFont('Times', 25)
+        text_obj = canv.beginText()
+        text_obj.setTextOrigin(200, 100)
+        text_obj.textLine("Список покупок:")
+        canv.drawText(text_obj)
+
+        canv.setFont('Times', 16)
+        text_obj = canv.beginText()
+        text_obj.setTextOrigin(80, 150)
+        nn = 0
+        for line in shopping_cart:
+            nn += 1
+            stroka = f'{str(nn)}.' \
+                     f'  {str(line.get("ingredient__name"))}   -   ' \
+                     f'{str(line.get("total"))} {str(line.get("ingredient__measurement_unit"))}'
+            text_obj.textLine(stroka)
+
+        canv.drawText(text_obj)
+        canv.showPage()
+        canv.save()
+        buf.seek(0)
+
+        return FileResponse(buf, as_attachment=True, filename='shopping_cart.pdf')
 
 
 class SubscribetViewSet(mixins.CreateModelMixin,
@@ -138,8 +176,8 @@ class SubscriptionsViewSet(mixins.ListModelMixin,
     """
     GET   /users/subscriptions/ - Мои подписки
     """
-    serializer_class = UserSerializer
-    pagination_class = LimitOffsetPagination
+    serializer_class = SubscriptionsSerializer
+    pagination_class = CustomPagination
 
     def get_queryset(self):
         user = self.request.user
@@ -154,7 +192,7 @@ class ShoppingCartViewSet(mixins.CreateModelMixin,
     POST  http://localhost/api/recipes/{recipe_id}/shopping_cart/ - Добавить рецепт в список покупок
     DEL   http://localhost/api/recipes/{recipe_id}/shopping_cart/ - Удалить рецепт из списка покупок
     """
-    serializer_class = ShoppingCartSerializer
+    serializer_class = RecipeMiniSerializer
     queryset = Recipe.objects.all()
     pagination_class = None
 
@@ -185,7 +223,7 @@ class FavoriteViewSet(mixins.CreateModelMixin,
     DEL    http://localhost/api/recipes/{recipe_id}/favorite/ - Удалить рецепт из избранного
     """
 
-    serializer_class = FavoriteSerializer
+    serializer_class = RecipeMiniSerializer
     queryset = Recipe.objects.all()
     pagination_class = None
 

@@ -11,6 +11,7 @@ drf-yasg
 Pillow
 python-dotenv
 psycopg2-binary==2.8.6
+reportlab
 
 # asgiref==3.2.10
 # PyJWT==2.1.0
