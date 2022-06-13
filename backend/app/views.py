@@ -1,5 +1,7 @@
 import io
 
+import reportlab
+from django.conf import settings
 from django.db.models import Sum
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
@@ -12,23 +14,17 @@ from rest_framework import (filters, mixins, status,
                             viewsets)
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.views import APIView
 
 from .filters import RecipeFilter
 from .models import User, Tag, Ingredient, Recipe, Subscription, IngredientForRecipe
 from .paginations import CustomPagination
+from .permissions import IsAuthorOrAuthReadOnly, IsAuthorOrReadOnly
 from .serializers import (TagSerializer, IngredientSerializer, RecipeGetSerializer,
                           RecipePostSerializer,
                           RecipeMiniSerializer,
                           SubscriptionsSerializer,
                           SubscribetSerializer
                           )
-
-
-# class UserViewSet(viewsets.ModelViewSet):
-#     queryset = User.objects.all()
-#     serializer_class = UserSerializer
-#     pagination_class = CustomPagination
 
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
@@ -39,6 +35,7 @@ class TagViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
     pagination_class = None
+    permission_classes = [IsAuthorOrReadOnly, ]
 
 
 class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
@@ -52,19 +49,22 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
 
     filter_backends = [filters.SearchFilter]
     search_fields = ['name']
+    permission_classes = [IsAuthorOrReadOnly, ]
 
 
 class RecipeViewSet(viewsets.ModelViewSet):
     """
-    GET     /recipes/       - Список рецептов
-    POST    /recipes/       - Создание рецепта
-    GET     /recipes/{id}/  - Получение рецепта
-    PATCH   /recipes/{id}/  - Обновление рецепта
-    DEL     /recipes/{id}/  - Удаление рецепта
+    GET      http://localhost/api/recipes/       - Список рецептов
+    POST     http://localhost/api/recipes/       - Создание рецепта
+    GET      http://localhost/api/recipes/{id}/  - Получение рецепта
+    PATCH    http://localhost/api/recipes/{id}/  - Обновление рецепта
+    DEL      http://localhost/api/recipes/{id}/  - Удаление рецепта
+    GET      http://localhost/api/recipes/download_shopping_cart/ - Список покупок в PDF
     """
     pagination_class = CustomPagination
     filter_backends = (DjangoFilterBackend,)
     filterset_class = RecipeFilter
+    permission_classes = [IsAuthorOrReadOnly, ]
 
     def get_queryset(self):
 
@@ -86,15 +86,10 @@ class RecipeViewSet(viewsets.ModelViewSet):
             return RecipePostSerializer
         return RecipeGetSerializer
 
-
-class DownloadShoppingCart(APIView):
-    """
-    GET    /recipes/download_shopping_cart/ - Список покупок в PDF
-    """
-
-    def get(self, request):
+    @action(methods=['get'], detail=False, url_path='download_shopping_cart')
+    def download_shopping_cart(self, request):
         user = self.request.user
-        recipe_is_in_shopping_cart = Recipe.objects.filter(is_favorited=user)
+        recipe_is_in_shopping_cart = Recipe.objects.filter(is_in_shopping_cart=user)
         shopping_cart = (IngredientForRecipe.objects
                          .filter(recipe__in=recipe_is_in_shopping_cart)
                          .values('ingredient__id')
@@ -105,23 +100,25 @@ class DownloadShoppingCart(APIView):
 
         buf = io.BytesIO()
         canv = canvas.Canvas(buf, pagesize=A4, bottomup=0)
-        pdfmetrics.registerFont(TTFont('Times', 'Times.ttf', 'UTF-8'))
 
-        canv.setFont('Times', 25)
+        reportlab.rl_config.TTFSearchPath.append(str(settings.BASE_DIR) + '/fonts')
+        pdfmetrics.registerFont(TTFont('Courier New', 'cour.ttf', 'UTF-8'))
+
+        canv.setFont('Courier New', 25)
         text_obj = canv.beginText()
         text_obj.setTextOrigin(200, 100)
         text_obj.textLine("Список покупок:")
         canv.drawText(text_obj)
 
-        canv.setFont('Times', 16)
+        canv.setFont('Courier New', 14)
         text_obj = canv.beginText()
         text_obj.setTextOrigin(80, 150)
         nn = 0
         for line in shopping_cart:
             nn += 1
-            stroka = f'{str(nn)}.' \
-                     f'  {str(line.get("ingredient__name"))}   -   ' \
-                     f'{str(line.get("total"))} {str(line.get("ingredient__measurement_unit"))}'
+            stroka = f'{str(nn):>2}.' \
+                     f'  {str(line.get("ingredient__name")):<25}   -   ' \
+                     f'{str(line.get("total")):>8} {str(line.get("ingredient__measurement_unit")):<10}'
             text_obj.textLine(stroka)
 
         canv.drawText(text_obj)
@@ -142,6 +139,7 @@ class SubscribetViewSet(mixins.CreateModelMixin,
     serializer_class = SubscribetSerializer
     queryset = Subscription.objects.all()
     pagination_class = None
+    permission_classes = [IsAuthorOrAuthReadOnly, ]
 
     @action(methods=['delete'], detail=False)
     def delete(self, request, *args, **kwargs):
@@ -178,6 +176,7 @@ class SubscriptionsViewSet(mixins.ListModelMixin,
     """
     serializer_class = SubscriptionsSerializer
     pagination_class = CustomPagination
+    permission_classes = [IsAuthorOrAuthReadOnly, ]
 
     def get_queryset(self):
         user = self.request.user
@@ -195,6 +194,7 @@ class ShoppingCartViewSet(mixins.CreateModelMixin,
     serializer_class = RecipeMiniSerializer
     queryset = Recipe.objects.all()
     pagination_class = None
+    permission_classes = [IsAuthorOrAuthReadOnly, ]
 
     @action(methods=['delete'], detail=False)
     def delete(self, request, *args, **kwargs):
@@ -226,6 +226,7 @@ class FavoriteViewSet(mixins.CreateModelMixin,
     serializer_class = RecipeMiniSerializer
     queryset = Recipe.objects.all()
     pagination_class = None
+    permission_classes = [IsAuthorOrAuthReadOnly, ]
 
     @action(methods=['delete'], detail=False)
     def delete(self, request, *args, **kwargs):

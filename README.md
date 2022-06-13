@@ -52,28 +52,12 @@
  POST       http://localhost/api/users/{id}/subscribe/           Подписаться на пользователя                Доступно только авторизованным пользователям
  DEL        http://localhost/api/users/{id}/subscribe/           Отписаться от пользователя                 Доступно только авторизованным пользователям
 ```
+
+## Запуск и наполнение базы данных
 ```
-docker build -t ikhmara/backend .  
-docker run --name web -it -p 8000:8000 ikhmara/backend
-
-
-CMD python3 manage.py migrate
-CMD python3 manage.py collectstatic --no-input
-
 docker-compose up -d --build 
 docker-compose exec web python3 manage.py migrate
-docker-compose exec web python manage.py createsuperuser
+docker-compose exec web python3 manage.py createsuperuser
 docker-compose exec web python3 manage.py collectstatic --no-input
-
-
-python manage.py dumpdata > dump.json
-
-python3 manage.py shell  
-# выполнить в открывшемся терминале:
->>> from django.contrib.contenttypes.models import ContentType
->>> ContentType.objects.all().delete()
->>> quit()
-
-python manage.py loaddata dump.json
-python manage.py pull_bd 
+docker-compose exec web python3 manage.py loaddata dump.json
 ```
