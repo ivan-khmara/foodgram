@@ -56,6 +56,7 @@
 ## Запуск и наполнение базы данных
 ```
 docker-compose up -d --build 
+docker-compose exec web python3 manage.py makemigrations
 docker-compose exec web python3 manage.py migrate
 docker-compose exec web python3 manage.py createsuperuser
 docker-compose exec web python3 manage.py collectstatic --no-input
