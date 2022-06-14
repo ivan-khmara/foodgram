@@ -42,7 +42,7 @@ INSTALLED_APPS = [
     'django_filters',
     'rest_framework.authtoken',
     'djoser',
-    'app.apps.AppConfig',
+    'api.apps.ApiConfig',
 
 ]
 
@@ -90,6 +90,12 @@ DATABASES = {
     }
 }
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+#     }
+# }
 
 # Password validation
 # https://docs.djangoproject.com/en/2.2/ref/settings/#auth-password-validators
@@ -169,12 +175,12 @@ DJOSER = {
         'user_list': ['rest_framework.permissions.IsAuthenticated'],
     },
     'SERIALIZERS': {
-        'user': 'app.serializers.UserSerializer',
-        'current_user': 'app.serializers.UserSerializer',
-        'user_create': 'app.serializers.UserCreateSerializerC',
+        'user': 'api.serializers.UserSerializer',
+        'current_user': 'api.serializers.UserSerializer',
+        'user_create': 'api.serializers.UserCreateSerializerC',
     },
     'HIDE_USERS': False
 
 }
 
-AUTH_USER_MODEL = "app.User"
+AUTH_USER_MODEL = "api.User"

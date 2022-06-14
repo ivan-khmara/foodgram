@@ -37,17 +37,17 @@ class IngredientForRecipeAdmin(admin.ModelAdmin):
 
 @admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin):
-    fields = ('author', "tags", 'name', 'image', 'ingredients', 'text', 'cooking_time',)
-    list_display = ('pk', 'author', 'name', "get_tags", 'get_favorited',)
+    fields = ('author', 'tags', 'name', 'image', 'ingredients', 'text', 'cooking_time',)
+    list_display = ('pk', 'author', 'name', 'get_tags', 'get_favorited',)
     list_filter = ('tags', 'author', 'name',)
     search_fields = ('tags', 'author', 'name',)
     empty_value_display = EMPTY_VALUE_DISPLAY
 
     def get_tags(self, obj):
-        return ",\n".join([p.name for p in obj.tags.all()])
+        return ',\n'.join([p.name for p in obj.tags.all()])
 
     def get_favorited(self, obj):
-        return str(obj.is_favorited.count())
+        return str(obj.fans.count())
 
 
 @admin.register(Subscription)

@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.db.models import UniqueConstraint
 
 
 class User(AbstractUser):
@@ -42,7 +43,7 @@ class Tag(models.Model):
 class Ingredient(models.Model):
     name = models.CharField(
         max_length=200,
-        verbose_name='•	Название',
+        verbose_name='Название',
     )
     measurement_unit = models.CharField(
         max_length=200,
@@ -54,8 +55,8 @@ class Ingredient(models.Model):
 
     class Meta:
         ordering = ('id',)
-        verbose_name = 'Ингридиент'
-        verbose_name_plural = 'Ингридиенты'
+        verbose_name = 'Ингредиент'
+        verbose_name_plural = 'Ингредиенты'
 
 
 class IngredientForRecipe(models.Model):
@@ -74,8 +75,8 @@ class IngredientForRecipe(models.Model):
 
     class Meta:
         ordering = ('id',)
-        verbose_name = 'Ингридиент для рецепта'
-        verbose_name_plural = 'Ингридиенты для рецептов'
+        verbose_name = 'Ингредиент для рецепта'
+        verbose_name_plural = 'Ингредиенты для рецептов'
 
 
 class Recipe(models.Model):
@@ -86,7 +87,7 @@ class Recipe(models.Model):
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='Recipes',
+        related_name='recipes',
         verbose_name='Автор публикации',
     )
     ingredients = models.ManyToManyField(
@@ -94,15 +95,15 @@ class Recipe(models.Model):
         verbose_name='Ингредиенты',
     )
 
-    is_favorited = models.ManyToManyField(
+    fans = models.ManyToManyField(
         User,
-        related_name='is_favoriteds',
-        verbose_name='В избранном'
+        verbose_name='В избранном',
+        related_name='fans'
     )
-    is_in_shopping_cart = models.ManyToManyField(
+    shoppers = models.ManyToManyField(
         User,
-        related_name='is_in_shopping_carts',
-        verbose_name='В списке покупок'
+        verbose_name='В списке покупок',
+        related_name='shoppers'
     )
 
     name = models.TextField(
@@ -149,3 +150,9 @@ class Subscription(models.Model):
         ordering = ('pk',)
         verbose_name = 'Подписки'
         verbose_name_plural = 'Подписки'
+        constraints = [
+            UniqueConstraint(
+                fields=['user', 'author'],
+                name='unique_user_author'
+            ),
+        ]

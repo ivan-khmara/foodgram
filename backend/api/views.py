@@ -10,16 +10,23 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
-from rest_framework import (filters, mixins, status,
-                            viewsets)
+from rest_framework import (filters, mixins, status, viewsets)
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from .filters import RecipeFilter, IngredientSearchFilter
-from .models import User, Tag, Ingredient, Recipe, Subscription, IngredientForRecipe
+from .models import (User,
+                     Tag,
+                     Ingredient,
+                     Recipe,
+                     Subscription,
+                     IngredientForRecipe
+                     )
 from .paginations import CustomPagination
 from .permissions import IsAuthorOrAuthReadOnly, IsAuthorOrReadOnly
-from .serializers import (TagSerializer, IngredientSerializer, RecipeGetSerializer,
+from .serializers import (TagSerializer,
+                          IngredientSerializer,
+                          RecipeGetSerializer,
                           RecipePostSerializer,
                           RecipeMiniSerializer,
                           SubscriptionsSerializer,
@@ -54,12 +61,12 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
 
 class RecipeViewSet(viewsets.ModelViewSet):
     """
-    GET      http://localhost/api/recipes/       - Список рецептов
-    POST     http://localhost/api/recipes/       - Создание рецепта
-    GET      http://localhost/api/recipes/{id}/  - Получение рецепта
-    PATCH    http://localhost/api/recipes/{id}/  - Обновление рецепта
-    DEL      http://localhost/api/recipes/{id}/  - Удаление рецепта
-    GET      http://localhost/api/recipes/download_shopping_cart/ - Список покупок в PDF
+    GET      api/recipes/       - Список рецептов
+    POST     api/recipes/       - Создание рецепта
+    GET      api/recipes/{id}/  - Получение рецепта
+    PATCH    api/recipes/{id}/  - Обновление рецепта
+    DEL      api/recipes/{id}/  - Удаление рецепта
+    GET      api/recipes/download_shopping_cart/ - Список покупок в PDF
     """
     pagination_class = CustomPagination
     filter_backends = (DjangoFilterBackend,)
@@ -67,18 +74,15 @@ class RecipeViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthorOrReadOnly, ]
 
     def get_queryset(self):
-
         queryset = Recipe.objects.all()
         user = self.request.user
-
-        is_favorited = self.request.query_params.get('is_favorited')
-        if is_favorited == '1':
-            queryset = queryset.filter(is_favorited=user)
-
-        is_in_shopping_cart = self.request.query_params.get('is_in_shopping_cart')
-        if is_in_shopping_cart == '1':
-            queryset = queryset.filter(is_in_shopping_cart=user)
-
+        is_favorited = bool(self.request.query_params.get('is_favorited'))
+        if is_favorited:
+            queryset = queryset.filter(fans=user)
+        is_in_shopping_cart = bool(
+            self.request.query_params.get('is_in_shopping_cart'))
+        if is_in_shopping_cart:
+            queryset = queryset.filter(shoppers=user)
         return queryset
 
     def get_serializer_class(self):
@@ -89,25 +93,30 @@ class RecipeViewSet(viewsets.ModelViewSet):
     @action(methods=['get'], detail=False, url_path='download_shopping_cart')
     def download_shopping_cart(self, request):
         user = self.request.user
-        recipe_is_in_shopping_cart = Recipe.objects.filter(is_in_shopping_cart=user)
+        recipes_in_shopping_cart = Recipe.objects.filter(shoppers=user)
         shopping_cart = (IngredientForRecipe.objects
-                         .filter(recipe__in=recipe_is_in_shopping_cart)
+                         .filter(recipe__in=recipes_in_shopping_cart)
                          .values('ingredient__id')
                          .annotate(total=Sum('amount'))
-                         .values('ingredient__name', 'total', 'ingredient__measurement_unit', )
+                         .values(
+                            'ingredient__name',
+                            'total',
+                            'ingredient__measurement_unit',
+                            )
                          .order_by('-total')
                          )
 
         buf = io.BytesIO()
         canv = canvas.Canvas(buf, pagesize=A4, bottomup=0)
 
-        reportlab.rl_config.TTFSearchPath.append(str(settings.BASE_DIR) + '/fonts')
+        reportlab.rl_config.TTFSearchPath.append(
+            str(settings.BASE_DIR) + '/fonts')
         pdfmetrics.registerFont(TTFont('Courier New', 'cour.ttf', 'UTF-8'))
 
         canv.setFont('Courier New', 25)
         text_obj = canv.beginText()
         text_obj.setTextOrigin(200, 100)
-        text_obj.textLine("Список покупок:")
+        text_obj.textLine('Список покупок:')
         canv.drawText(text_obj)
 
         canv.setFont('Courier New', 14)
@@ -116,9 +125,10 @@ class RecipeViewSet(viewsets.ModelViewSet):
         nn = 0
         for line in shopping_cart:
             nn += 1
-            stroka = f'{str(nn):>2}.' \
-                     f'  {str(line.get("ingredient__name")):<25}   -   ' \
-                     f'{str(line.get("total")):>8} {str(line.get("ingredient__measurement_unit")):<10}'
+            stroka = (f'{str(nn):>2}.'
+                      f'{str(line.get("ingredient__name")):<25}   -   '
+                      f'{str(line.get("total")):>8} '
+                      f'{str(line.get("ingredient__measurement_unit")):<10}')
             text_obj.textLine(stroka)
 
         canv.drawText(text_obj)
@@ -126,7 +136,11 @@ class RecipeViewSet(viewsets.ModelViewSet):
         canv.save()
         buf.seek(0)
 
-        return FileResponse(buf, as_attachment=True, filename='shopping_cart.pdf')
+        return FileResponse(
+            buf,
+            as_attachment=True,
+            filename='shopping_cart.pdf'
+            )
 
 
 class SubscribetViewSet(mixins.CreateModelMixin,
@@ -145,28 +159,27 @@ class SubscribetViewSet(mixins.CreateModelMixin,
     def delete(self, request, *args, **kwargs):
         user_id = self.kwargs.get('user_id')
         author = get_object_or_404(User, pk=user_id)
-        try:
-            tmp = get_object_or_404(Subscription, user=request.user, author=author)
-            tmp.delete()
+        is_subscription = Subscription.objects.filter(
+            user=request.user, author=author).exists()
+        if is_subscription:
+            Subscription.objects.get(
+                user=request.user, author=author).delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
-        except:
-            message = 'Вы не были подписаны на автора ' + str(author.username)
-            return Response({'errors': message}, status=status.HTTP_400_BAD_REQUEST)
+        message = 'Вы не были подписаны на автора ' + str(author.username)
+        return Response(
+            {'errors': message},
+            status=status.HTTP_400_BAD_REQUEST
+            )
 
     def create(self, request, *args, **kwargs):
         user_id = self.kwargs.get('user_id')
-        author = get_object_or_404(User, pk=user_id)
-        if author == request.user:
-            return Response({'errors': 'Подписка на себя не возможна'}, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            get_object_or_404(Subscription, user=request.user, author=author)
-            message = 'Вы уже подписаны на автора ' + str(author.username)
-            return Response({'errors': message}, status=status.HTTP_400_BAD_REQUEST)
-        except:
-            serializer = self.get_serializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            serializer.save(user=self.request.user, author=author)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        data = {'author': user_id,
+                'user': self.request.user.id
+                }
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class SubscriptionsViewSet(mixins.ListModelMixin,
@@ -188,8 +201,8 @@ class ShoppingCartViewSet(mixins.CreateModelMixin,
                           mixins.DestroyModelMixin,
                           viewsets.GenericViewSet):
     """
-    POST  http://localhost/api/recipes/{recipe_id}/shopping_cart/ - Добавить рецепт в список покупок
-    DEL   http://localhost/api/recipes/{recipe_id}/shopping_cart/ - Удалить рецепт из списка покупок
+    POST  api/recipes/{recipe_id}/shopping_cart/ - Добавить рецепт в список покупок
+    DEL   api/recipes/{recipe_id}/shopping_cart/ - Удалить рецепт из списка покупок
     """
     serializer_class = RecipeMiniSerializer
     queryset = Recipe.objects.all()
@@ -200,17 +213,23 @@ class ShoppingCartViewSet(mixins.CreateModelMixin,
     def delete(self, request, *args, **kwargs):
         recipe_id = self.kwargs.get('recipe_id')
         recipe = get_object_or_404(Recipe, pk=recipe_id)
-        if request.user in recipe.is_in_shopping_cart.all():
-            recipe.is_in_shopping_cart.remove(request.user)
+        if request.user in recipe.shoppers.all():
+            recipe.shoppers.remove(request.user)
             return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response({'errors': 'Рецепт не был в списке покупок'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {'errors': 'Рецепт не был в списке покупок'},
+            status=status.HTTP_400_BAD_REQUEST
+            )
 
     def create(self, request, *args, **kwargs):
         recipe_id = self.kwargs.get('recipe_id')
         recipe = get_object_or_404(Recipe, pk=recipe_id)
-        if request.user in recipe.is_in_shopping_cart.all():
-            return Response({'errors': 'Рецепт уже есть в списке покупок'}, status=status.HTTP_400_BAD_REQUEST)
-        recipe.is_in_shopping_cart.add(request.user)
+        if request.user in recipe.shoppers.all():
+            return Response(
+                {'errors': 'Рецепт уже есть в списке покупок'},
+                status=status.HTTP_400_BAD_REQUEST
+                )
+        recipe.shoppers.add(request.user)
         serializer = self.get_serializer(recipe)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -219,8 +238,8 @@ class FavoriteViewSet(mixins.CreateModelMixin,
                       mixins.DestroyModelMixin,
                       viewsets.GenericViewSet):
     """
-    POST   http://localhost/api/recipes/{recipe_id}/favorite/ - Добавить рецепт в избранное
-    DEL    http://localhost/api/recipes/{recipe_id}/favorite/ - Удалить рецепт из избранного
+    POST   api/recipes/{recipe_id}/favorite/ - Добавить рецепт в избранное
+    DEL    api/recipes/{recipe_id}/favorite/ - Удалить рецепт из избранного
     """
 
     serializer_class = RecipeMiniSerializer
@@ -232,16 +251,22 @@ class FavoriteViewSet(mixins.CreateModelMixin,
     def delete(self, request, *args, **kwargs):
         recipe_id = self.kwargs.get('recipe_id')
         recipe = get_object_or_404(Recipe, pk=recipe_id)
-        if request.user in recipe.is_favorited.all():
-            recipe.is_favorited.remove(request.user)
+        if request.user in recipe.fans.all():
+            recipe.fans.remove(request.user)
             return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response({'errors': 'Рецепт не был в избранном'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {'errors': 'Рецепт не был в избранном'},
+            status=status.HTTP_400_BAD_REQUEST
+            )
 
     def create(self, request, *args, **kwargs):
         recipe_id = self.kwargs.get('recipe_id')
         recipe = get_object_or_404(Recipe, pk=recipe_id)
-        if request.user in recipe.is_favorited.all():
-            return Response({'errors': 'Рецепт уже есть в избранном'}, status=status.HTTP_400_BAD_REQUEST)
-        recipe.is_favorited.add(request.user)
+        if request.user in recipe.fans.all():
+            return Response(
+                {'errors': 'Рецепт уже есть в избранном'},
+                status=status.HTTP_400_BAD_REQUEST
+                )
+        recipe.fans.add(request.user)
         serializer = self.get_serializer(recipe)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
