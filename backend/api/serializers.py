@@ -1,10 +1,9 @@
 from djoser.serializers import UserCreateSerializer
 from drf_extra_fields.fields import Base64ImageField
+from recipes.models import (Ingredient, IngredientForRecipe, Recipe,
+                            Subscription, Tag, User)
 from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
-
-from .models import (Ingredient, IngredientForRecipe, Recipe, Subscription,
-                     Tag, User)
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -165,18 +164,19 @@ class RecipePostSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def create_or_update_ingredients(instance, ingredients):
-        if ingredients:
-            ingredients_old = instance.ingredients.all()
-            ingredients_old.delete()
-            objs = [
-                IngredientForRecipe(
-                    ingredient=ingr.get('id'),
-                    amount=ingr.get('amount')
-                )
-                for ingr in ingredients
-            ]
-            ingr_for_recipe = IngredientForRecipe.objects.bulk_create(objs)
-            instance.ingredients.set(ingr_for_recipe)
+        if not ingredients:
+            return instance
+        ingredients_old = instance.ingredients.all()
+        ingredients_old.delete()
+        objs = [
+            IngredientForRecipe(
+                ingredient=ingr.get('id'),
+                amount=ingr.get('amount')
+            )
+            for ingr in ingredients
+        ]
+        ingr_for_recipe = IngredientForRecipe.objects.bulk_create(objs)
+        instance.ingredients.set(ingr_for_recipe)
         return instance
 
     def create(self, validated_data):
@@ -277,8 +277,9 @@ class SubscribetSerializer(serializers.ModelSerializer):
             )
         ]
 
-    def validate(self, data):
-        if data['author'] == data['user']:
+    def validate_author(self, value):
+        user = self.context['request'].user
+        if value == user:
             raise serializers.ValidationError(
                 'Нельзя подписаться на себя')
-        return data
+        return value

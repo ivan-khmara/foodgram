@@ -6,6 +6,8 @@ from django.db.models import Sum
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
+from recipes.models import (Ingredient, IngredientForRecipe, Recipe,
+                            Subscription, Tag, User)
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
@@ -15,8 +17,6 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from .filters import IngredientSearchFilter, RecipeFilter
-from .models import (Ingredient, IngredientForRecipe, Recipe, Subscription,
-                     Tag, User)
 from .paginations import CustomPagination
 from .permissions import IsAuthorOrAuthReadOnly, IsAuthorOrReadOnly
 from .serializers import (IngredientSerializer, RecipeGetSerializer,
@@ -183,12 +183,7 @@ class SubscriptionsViewSet(mixins.ListModelMixin,
 
     def get_queryset(self):
         user = self.request.user
-        # Максим Любиев ревьюер "Воспользуйтесь values"
-        # user.follower.all().order_by('author_id').values('author')
-        # не понимаю как воспользоваться values, мне нужно вернуть
-        # экземпляры модели User, а values вернет словарь или список
-        authors = user.follower.all().order_by('author_id')
-        return [author.author for author in authors]
+        return User.objects.filter(following__user=user)
 
 
 class SpecialRecipeViewSet(mixins.CreateModelMixin,
@@ -208,7 +203,7 @@ class SpecialRecipeViewSet(mixins.CreateModelMixin,
             getattr(recipe, self.attribute).remove(request.user)
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(
-            {'errors': 'Рецепт не был в избранном'},
+            {'errors': 'Рецепта не было в списке'},
             status=status.HTTP_400_BAD_REQUEST
         )
 
@@ -217,7 +212,7 @@ class SpecialRecipeViewSet(mixins.CreateModelMixin,
         recipe = get_object_or_404(Recipe, pk=recipe_id)
         if request.user in getattr(recipe, self.attribute).all():
             return Response(
-                {'errors': 'Рецепт уже есть в избранном'},
+                {'errors': 'Рецепт уже был в списке'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         getattr(recipe, self.attribute).add(request.user)
