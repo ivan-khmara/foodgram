@@ -10,7 +10,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
-from rest_framework import (filters, mixins, status, viewsets)
+from rest_framework import (mixins, status, viewsets)
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
@@ -193,17 +193,18 @@ class SubscriptionsViewSet(mixins.ListModelMixin,
 
     def get_queryset(self):
         user = self.request.user
-        tmp = user.follower.all().order_by('author_id')
-        return [i.author for i in tmp]
+        # Максим Любиев ревьюер "Воспользуйтесь values"
+        # user.follower.all().order_by('author_id').values('author')
+        # не понимаю как воспользоваться values, мне нужно вернуть
+        # экземпляры модели User, а values вернет словарь или список
+        authors = user.follower.all().order_by('author_id')
+        return [author.author for author in authors]
 
 
-class ShoppingCartViewSet(mixins.CreateModelMixin,
-                          mixins.DestroyModelMixin,
-                          viewsets.GenericViewSet):
-    """
-    POST  api/recipes/{recipe_id}/shopping_cart/ - Добавить рецепт в список покупок
-    DEL   api/recipes/{recipe_id}/shopping_cart/ - Удалить рецепт из списка покупок
-    """
+class SpecialRecipeViewSet(mixins.CreateModelMixin,
+                           mixins.DestroyModelMixin,
+                           viewsets.GenericViewSet):
+    attribute = ''
     serializer_class = RecipeMiniSerializer
     queryset = Recipe.objects.all()
     pagination_class = None
@@ -213,46 +214,8 @@ class ShoppingCartViewSet(mixins.CreateModelMixin,
     def delete(self, request, *args, **kwargs):
         recipe_id = self.kwargs.get('recipe_id')
         recipe = get_object_or_404(Recipe, pk=recipe_id)
-        if request.user in recipe.shoppers.all():
-            recipe.shoppers.remove(request.user)
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response(
-            {'errors': 'Рецепт не был в списке покупок'},
-            status=status.HTTP_400_BAD_REQUEST
-            )
-
-    def create(self, request, *args, **kwargs):
-        recipe_id = self.kwargs.get('recipe_id')
-        recipe = get_object_or_404(Recipe, pk=recipe_id)
-        if request.user in recipe.shoppers.all():
-            return Response(
-                {'errors': 'Рецепт уже есть в списке покупок'},
-                status=status.HTTP_400_BAD_REQUEST
-                )
-        recipe.shoppers.add(request.user)
-        serializer = self.get_serializer(recipe)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-
-class FavoriteViewSet(mixins.CreateModelMixin,
-                      mixins.DestroyModelMixin,
-                      viewsets.GenericViewSet):
-    """
-    POST   api/recipes/{recipe_id}/favorite/ - Добавить рецепт в избранное
-    DEL    api/recipes/{recipe_id}/favorite/ - Удалить рецепт из избранного
-    """
-
-    serializer_class = RecipeMiniSerializer
-    queryset = Recipe.objects.all()
-    pagination_class = None
-    permission_classes = [IsAuthorOrAuthReadOnly, ]
-
-    @action(methods=['delete'], detail=False)
-    def delete(self, request, *args, **kwargs):
-        recipe_id = self.kwargs.get('recipe_id')
-        recipe = get_object_or_404(Recipe, pk=recipe_id)
-        if request.user in recipe.fans.all():
-            recipe.fans.remove(request.user)
+        if request.user in getattr(recipe, self.attribute).all():
+            getattr(recipe, self.attribute).remove(request.user)
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(
             {'errors': 'Рецепт не был в избранном'},
@@ -262,11 +225,29 @@ class FavoriteViewSet(mixins.CreateModelMixin,
     def create(self, request, *args, **kwargs):
         recipe_id = self.kwargs.get('recipe_id')
         recipe = get_object_or_404(Recipe, pk=recipe_id)
-        if request.user in recipe.fans.all():
+        if request.user in getattr(recipe, self.attribute).all():
             return Response(
                 {'errors': 'Рецепт уже есть в избранном'},
                 status=status.HTTP_400_BAD_REQUEST
                 )
-        recipe.fans.add(request.user)
+        getattr(recipe, self.attribute).add(request.user)
         serializer = self.get_serializer(recipe)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class ShoppingCartViewSet(SpecialRecipeViewSet):
+    """
+    POST
+    api/recipes/{recipe_id}/shopping_cart/ - Добавить рецепт в список покупок
+    DEL
+    api/recipes/{recipe_id}/shopping_cart/ - Удалить рецепт из списка покупок
+    """
+    attribute = 'shoppers'
+
+
+class FavoriteViewSet(SpecialRecipeViewSet):
+    """
+    POST   api/recipes/{recipe_id}/favorite/ - Добавить рецепт в избранное
+    DEL    api/recipes/{recipe_id}/favorite/ - Удалить рецепт из избранного
+    """
+    attribute = 'fans'

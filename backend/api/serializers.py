@@ -148,7 +148,6 @@ class RecipePostSerializer(serializers.ModelSerializer):
                   'cooking_time',
                   )
 
-
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         representation['tags'] = TagSerializer(instance.tags, many=True).data
