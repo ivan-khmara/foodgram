@@ -1,7 +1,7 @@
 import os
 
-from dotenv import load_dotenv
 from django.core.management import utils
+from dotenv import load_dotenv
 
 load_dotenv()
 

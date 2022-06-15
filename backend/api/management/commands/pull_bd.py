@@ -1,4 +1,3 @@
-import csv
 import json
 import sqlite3
 
@@ -10,7 +9,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
 
-        DELIMITER = ','  # Разделитель в файле с данными
         id_ingredient = 0
         to_ingredient = []
         # Подключаемся к БД в файле db.sqlite3
@@ -22,7 +20,10 @@ class Command(BaseCommand):
             file_data = json.load(fin)
             for i in file_data:
                 id_ingredient += 1
-                to_ingredient.append((id_ingredient, i.get('name'), i.get('measurement_unit')))
+                to_ingredient.append(id_ingredient,
+                                     i.get('name'),
+                                     i.get('measurement_unit')
+                                     )
         try:
             cur.executemany(
                 "INSERT INTO app_ingredient VALUES (?, ?, ?);",

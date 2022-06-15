@@ -10,28 +10,19 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
-from rest_framework import (mixins, status, viewsets)
+from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from .filters import RecipeFilter, IngredientSearchFilter
-from .models import (User,
-                     Tag,
-                     Ingredient,
-                     Recipe,
-                     Subscription,
-                     IngredientForRecipe
-                     )
+from .filters import IngredientSearchFilter, RecipeFilter
+from .models import (Ingredient, IngredientForRecipe, Recipe, Subscription,
+                     Tag, User)
 from .paginations import CustomPagination
 from .permissions import IsAuthorOrAuthReadOnly, IsAuthorOrReadOnly
-from .serializers import (TagSerializer,
-                          IngredientSerializer,
-                          RecipeGetSerializer,
-                          RecipePostSerializer,
-                          RecipeMiniSerializer,
-                          SubscriptionsSerializer,
-                          SubscribetSerializer
-                          )
+from .serializers import (IngredientSerializer, RecipeGetSerializer,
+                          RecipeMiniSerializer, RecipePostSerializer,
+                          SubscribetSerializer, SubscriptionsSerializer,
+                          TagSerializer)
 
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
@@ -82,7 +73,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         is_in_shopping_cart = bool(
             self.request.query_params.get('is_in_shopping_cart'))
         if is_in_shopping_cart:
-            queryset = queryset.filter(shoppers=user)
+            return queryset.filter(shoppers=user)
         return queryset
 
     def get_serializer_class(self):
@@ -98,11 +89,10 @@ class RecipeViewSet(viewsets.ModelViewSet):
                          .filter(recipe__in=recipes_in_shopping_cart)
                          .values('ingredient__id')
                          .annotate(total=Sum('amount'))
-                         .values(
-                            'ingredient__name',
-                            'total',
-                            'ingredient__measurement_unit',
-                            )
+                         .values('ingredient__name',
+                                 'total',
+                                 'ingredient__measurement_unit',
+                                 )
                          .order_by('-total')
                          )
 
@@ -140,7 +130,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
             buf,
             as_attachment=True,
             filename='shopping_cart.pdf'
-            )
+        )
 
 
 class SubscribetViewSet(mixins.CreateModelMixin,
@@ -169,7 +159,7 @@ class SubscribetViewSet(mixins.CreateModelMixin,
         return Response(
             {'errors': message},
             status=status.HTTP_400_BAD_REQUEST
-            )
+        )
 
     def create(self, request, *args, **kwargs):
         user_id = self.kwargs.get('user_id')
@@ -220,7 +210,7 @@ class SpecialRecipeViewSet(mixins.CreateModelMixin,
         return Response(
             {'errors': 'Рецепт не был в избранном'},
             status=status.HTTP_400_BAD_REQUEST
-            )
+        )
 
     def create(self, request, *args, **kwargs):
         recipe_id = self.kwargs.get('recipe_id')
@@ -229,7 +219,7 @@ class SpecialRecipeViewSet(mixins.CreateModelMixin,
             return Response(
                 {'errors': 'Рецепт уже есть в избранном'},
                 status=status.HTTP_400_BAD_REQUEST
-                )
+            )
         getattr(recipe, self.attribute).add(request.user)
         serializer = self.get_serializer(recipe)
         return Response(serializer.data, status=status.HTTP_201_CREATED)

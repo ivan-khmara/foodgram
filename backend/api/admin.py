@@ -1,14 +1,15 @@
 from django.contrib import admin
 
-from .models import User, Tag, Ingredient, IngredientForRecipe, Recipe, Subscription
-
+from .models import (Ingredient, IngredientForRecipe, Recipe, Subscription,
+                     Tag, User)
 
 EMPTY_VALUE_DISPLAY = '-пусто-'
 
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
-    list_display = ('pk', 'email', 'username', 'first_name', 'last_name', 'is_staff',)
+    list_display = ('pk', 'email', 'username', 'first_name', 'last_name',
+                    'is_staff',)
     search_fields = ('username', 'email',)
     list_filter = ('username', 'email',)
     empty_value_display = EMPTY_VALUE_DISPLAY
@@ -37,7 +38,8 @@ class IngredientForRecipeAdmin(admin.ModelAdmin):
 
 @admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin):
-    fields = ('author', 'tags', 'name', 'image', 'ingredients', 'text', 'cooking_time',)
+    fields = ('author', 'tags', 'name', 'image', 'ingredients', 'text',
+              'cooking_time',)
     list_display = ('pk', 'author', 'name', 'get_tags', 'get_favorited',)
     list_filter = ('tags', 'author', 'name',)
     search_fields = ('tags', 'author', 'name',)
