@@ -6,10 +6,10 @@
  GET  http://localhost/api/users/{id}/         Профиль пользователя AUTHORIZATIONS:Token
  GET  http://localhost/api/users/me/           Текущий пользователь AUTHORIZATIONS:Token
  GET  http://localhost/api/users/set_password/ Изменение пароля AUTHORIZATIONS:Token
- 
- 
+
+
  POST http://localhost/api/auth/token/login/   Получить токен авторизации
- POST http://localhost/api/auth/token/logout/  Удаление токена  AUTHORIZATIONS:Token                                    
+ POST http://localhost/api/auth/token/logout/  Удаление токена  AUTHORIZATIONS:Token
 ```
 
 ## Теги
@@ -55,10 +55,14 @@
 
 ## Запуск и наполнение базы данных
 ```
-docker-compose up -d --build 
+docker-compose up -d --build
 docker-compose exec web python3 manage.py makemigrations
 docker-compose exec web python3 manage.py migrate
 docker-compose exec web python3 manage.py createsuperuser
 docker-compose exec web python3 manage.py collectstatic --no-input
-docker-compose exec web python3 manage.py loaddata dump.json
+docker-compose exec web python3 manage.py loaddata /data/dump.json
+
+host:  130.193.41.20
+login: admin
+pass:  qwER1234
 ```
