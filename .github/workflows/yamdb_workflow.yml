@@ -56,13 +56,13 @@ jobs:
         push: true
         tags: ${{ secrets.DOCKER_USERNAME }}/backend:latest
 
-        # - name: Push front to Docker Hub
-        #   # Пуш образа в Docker Hub
-        #   uses: docker/build-push-action@v2
-        #   with:
-        #     context: frontend/
-        #     push: true
-        #     tags: ${{ secrets.DOCKER_USERNAME }}/frontend:latest
+    - name: Push front to Docker Hub
+      # Пуш образа в Docker Hub
+      uses: docker/build-push-action@v2
+      with:
+        context: frontend/
+        push: true
+        tags: ${{ secrets.DOCKER_USERNAME }}/frontend:latest
   # Деплой приложения на удалённый сервер
   deploy:
     runs-on: ubuntu-latest

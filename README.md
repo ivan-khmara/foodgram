@@ -1,7 +1,11 @@
 ﻿# praktikum_new_diplom
 
+## host:  130.193.41.20
+## login: admin
+## pass:  qwER1234
+
 ```
- GET  http://localhost/api/users/              Список пользователей  AUTHORIZATIONS:Token integer; limit
+ GET  http://localhost/api/users/              Список пользователей  AUTHORIZATIONS:Token
  POST http://localhost/api/users/              Регистрация пользователя
  GET  http://localhost/api/users/{id}/         Профиль пользователя AUTHORIZATIONS:Token
  GET  http://localhost/api/users/me/           Текущий пользователь AUTHORIZATIONS:Token
@@ -60,9 +64,5 @@ docker-compose exec web python3 manage.py makemigrations
 docker-compose exec web python3 manage.py migrate
 docker-compose exec web python3 manage.py createsuperuser
 docker-compose exec web python3 manage.py collectstatic --no-input
-docker-compose exec web python3 manage.py loaddata /data/dump.json
-
-host:  130.193.41.20
-login: admin
-pass:  qwER1234
+docker-compose exec web python3 manage.py loaddata dump.json
 ```
