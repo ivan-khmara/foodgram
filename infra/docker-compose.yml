@@ -9,10 +9,10 @@ services:
       - ./.env
 
   web:
-    build:
-      context: ../backend
-      dockerfile: Dockerfile
-
+    image: ikhmara/backend
+    # build:
+    #   context: ../backend
+    #   dockerfile: Dockerfile
     ports:
       - "8000:8000"
     restart: always
@@ -27,10 +27,10 @@ services:
 
 
   frontend:
-    build:
-      context: ../frontend
-      dockerfile: Dockerfile
-
+    # build:
+    #   context: ../frontend
+    #   dockerfile: Dockerfile
+    image: ikhmara/frontend
     volumes:
       - ../frontend/:/app/result_build/
     depends_on:
